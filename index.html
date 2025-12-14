@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNAKE GAME</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Righteous&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Righteous', 'Arial Black', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a0033 0%, #0a0015 100%);
+        }
+
+        #gameCanvas {
+            display: block;
+            background: radial-gradient(ellipse at center, #2a1a4a 0%, #1a0033 100%);
+        }
+
+        .start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .start-screen h1 {
+            font-family: 'Bungee', cursive;
+            font-size: 120px;
+            background: linear-gradient(45deg, #ff0080, #ff8c00, #40e0d0, #ff0080);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 3s ease infinite;
+            text-shadow: 0 0 80px rgba(255, 0, 128, 0.5);
+            margin-bottom: 40px;
+            letter-spacing: 8px;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .start-screen input {
+            padding: 20px 40px;
+            font-size: 28px;
+            font-family: 'Righteous', cursive;
+            border: 4px solid #ff0080;
+            background: rgba(0, 0, 0, 0.7);
+            color: #40e0d0;
+            border-radius: 50px;
+            outline: none;
+            text-align: center;
+            margin-bottom: 15px;
+            box-shadow: 0 0 30px rgba(255, 0, 128, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .start-screen input[type="password"] {
+            font-size: 20px;
+            padding: 15px 30px;
+        }
+
+        .start-screen input:focus {
+            border-color: #40e0d0;
+            box-shadow: 0 0 50px rgba(64, 224, 208, 0.7);
+        }
+
+        .start-screen button {
+            padding: 25px 80px;
+            font-size: 32px;
+            font-family: 'Bungee', cursive;
+            background: linear-gradient(45deg, #ff0080, #ff8c00);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(255, 0, 128, 0.6);
+        }
+
+        .start-screen button:hover {
+            transform: scale(1.1) translateY(-5px);
+            box-shadow: 0 15px 60px rgba(255, 140, 0, 0.8);
+        }
+
+        .hud {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            font-size: 28px;
+            color: #40e0d0;
+            text-shadow: 0 0 20px rgba(64, 224, 208, 0.8);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .hud div {
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 25px;
+            border-radius: 20px;
+            border: 2px solid #ff0080;
+            display: inline-block;
+        }
+
+        .leaderboard {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 30px;
+            border-radius: 20px;
+            border: 3px solid #ff0080;
+            color: #40e0d0;
+            font-size: 20px;
+            z-index: 100;
+            pointer-events: none;
+            min-width: 250px;
+        }
+
+        .leaderboard h3 {
+            font-family: 'Bungee', cursive;
+            text-align: center;
+            margin-bottom: 15px;
+            color: #ff0080;
+            font-size: 24px;
+        }
+
+        .leaderboard-item {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 0, 128, 0.1);
+            border-radius: 10px;
+        }
+
+        .leaderboard-item.player {
+            background: rgba(64, 224, 208, 0.2);
+            border: 2px solid #40e0d0;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .game-over h2 {
+            font-family: 'Bungee', cursive;
+            font-size: 80px;
+            color: #ff0080;
+            text-shadow: 0 0 40px rgba(255, 0, 128, 0.8);
+            margin-bottom: 30px;
+        }
+
+        .game-over .stats {
+            font-size: 32px;
+            color: #40e0d0;
+            margin: 15px 0;
+        }
+
+        .controls-hint {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #40e0d0;
+            font-size: 20px;
+            text-shadow: 0 0 10px rgba(64, 224, 208, 0.6);
+            z-index: 100;
+            text-align: center;
+        }
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid #ff8c00;
+            border-radius: 20px;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        .boost-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0080, #ff8c00);
+            width: 100%;
+            transition: width 0.1s ease;
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.8);
+        }
+
+        .controls-hint {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #40e0d0;
+            font-size: 20px;
+            text-shadow: 0 0 10px rgba(64, 224, 208, 0.6);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .pause-button {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 40px;
+            font-size: 24px;
+            font-family: 'Bungee', 'Arial Black', sans-serif;
+            background: linear-gradient(45deg, #ff0080, #ff8c00);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            z-index: 200;
+            box-shadow: 0 5px 20px rgba(255, 0, 128, 0.5);
+            transition: all 0.3s ease;
+            pointer-events: auto;
+        }
+
+        .pause-button:hover {
+            transform: translateX(-50%) scale(1.1);
+            box-shadow: 0 8px 30px rgba(255, 140, 0, 0.7);
+        }
+
+        .pause-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1500;
+        }
+
+        .pause-overlay h2 {
+            font-family: 'Bungee', cursive;
+            font-size: 80px;
+            color: #40e0d0;
+            text-shadow: 0 0 40px rgba(64, 224, 208, 0.8);
+            margin-bottom: 40px;
+        }
+
+        .pause-overlay button {
+            margin: 15px;
+            padding: 20px 60px;
+            font-size: 28px;
+            font-family: 'Bungee', 'Arial Black', sans-serif;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            transition: all 0.3s ease;
+            pointer-events: auto;
+        }
+
+        .pause-overlay .resume-btn {
+            background: linear-gradient(45deg, #ff0080, #ff8c00);
+            box-shadow: 0 10px 40px rgba(255, 0, 128, 0.6);
+        }
+
+        .pause-overlay .resume-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 60px rgba(255, 140, 0, 0.8);
+        }
+
+        .pause-overlay .home-btn {
+            background: linear-gradient(45deg, #40e0d0, #00ffff);
+            box-shadow: 0 10px 40px rgba(64, 224, 208, 0.6);
+        }
+
+        .pause-overlay .home-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 60px rgba(64, 224, 208, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="start-screen" id="startScreen">
+        <h1>SNAKE GAME</h1>
+        <input type="text" id="playerName" placeholder="Enter Your Name" maxlength="15" />
+        <input type="password" id="adminCode" placeholder="Admin Code (Optional)" maxlength="6" style="margin-top: 15px;" />
+        <button onclick="startGame()">SLITHER IN</button>
+        <div style="margin-top: 20px;">
+            <button onclick="showSignUp()" id="signUpButton" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(45deg, #4285f4, #34a853); color: white; border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', 'Arial Black', sans-serif; margin-right: 10px;">SIGN UP</button>
+            <button onclick="showSignIn()" id="signInButton" style="padding: 15px 30px; font-size: 18px; background: linear-gradient(45deg, #40e0d0, #00ffff); color: white; border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', 'Arial Black', sans-serif;">SIGN IN</button>
+        </div>
+        <p id="accountStatus" style="margin-top: 15px; color: #40e0d0; font-size: 18px;"></p>
+    </div>
+
+    <!-- Sign Up Modal -->
+    <div id="signUpModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%); padding: 40px; border-radius: 20px; border: 3px solid #ff0080; text-align: center;">
+            <h2 style="font-family: 'Bungee', 'Arial Black', sans-serif; color: #40e0d0; margin-bottom: 30px;">CREATE ACCOUNT</h2>
+            <input type="text" id="signUpUsername" placeholder="Username" maxlength="20" style="display: block; width: 300px; padding: 15px; margin: 15px auto; font-size: 18px; border: 2px solid #ff0080; background: rgba(0,0,0,0.5); color: #40e0d0; border-radius: 10px; font-family: 'Righteous', 'Arial Black', sans-serif;" />
+            <input type="password" id="signUpPassword" placeholder="Password" maxlength="30" style="display: block; width: 300px; padding: 15px; margin: 15px auto; font-size: 18px; border: 2px solid #ff0080; background: rgba(0,0,0,0.5); color: #40e0d0; border-radius: 10px; font-family: 'Righteous', 'Arial Black', sans-serif;" />
+            <input type="password" id="signUpConfirm" placeholder="Confirm Password" maxlength="30" style="display: block; width: 300px; padding: 15px; margin: 15px auto; font-size: 18px; border: 2px solid #ff0080; background: rgba(0,0,0,0.5); color: #40e0d0; border-radius: 10px; font-family: 'Righteous', 'Arial Black', sans-serif;" />
+            <button onclick="createAccount()" style="padding: 15px 40px; font-size: 20px; background: linear-gradient(45deg, #ff0080, #ff8c00); color: white; border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', 'Arial Black', sans-serif; margin-top: 20px; margin-right: 10px;">CREATE</button>
+            <button onclick="closeSignUp()" style="padding: 15px 40px; font-size: 20px; background: linear-gradient(45deg, #666, #888); color: white; border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', 'Arial Black', sans-serif; margin-top: 20px;">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- Sign In Modal -->
+    <div id="signInModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%); padding: 40px; border-radius: 20px; border: 3px solid #40e0d0; text-align: center;">
+            <h2 style="font-family: 'Bungee', 'Arial Black', sans-serif; color: #40e0d0; margin-bottom: 30px;">SIGN IN</h2>
+            <input type="text" id="signInUsername" placeholder="Username" maxlength="20" style="display: block; width: 300px; padding: 15px; margin: 15px auto; font-size: 18px; border: 2px solid #40e0d0; background: rgba(0,0,0,0.5); color: #40e0d0; border-radius: 10px; font-family: 'Righteous', 'Arial Black', sans-serif;" />
+            <input type="password" id="signInPassword" placeholder="Password" maxlength="30" style="display: block; width: 300px; padding: 15px; margin: 15px auto; font-size: 18px; border: 2px solid #40e0d0; background: rgba(0,0,0,0.5); color: #40e0d0; border-radius: 10px; font-family: 'Righteous', 'Arial Black', sans-serif;" />
+            <button onclick="signInAccount()" style="padding: 15px 40px; font-size: 20px; background: linear-gradient(45deg, #40e0d0, #00ffff); color: white; border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', 'Arial Black', sans-serif; margin-top: 20px; margin-right: 10px;">SIGN IN</button>
+            <button onclick="closeSignIn()" style="padding: 15px 40px; font-size: 20px; background: linear-gradient(45deg, #666, #888); color: white; border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', 'Arial Black', sans-serif; margin-top: 20px;">CANCEL</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="hud" id="hud" style="display: none;">
+        <div>Length: <span id="length">10</span></div>
+        <div>Rank: <span id="rank">#1</span></div>
+    </div>
+
+    <div class="leaderboard" id="leaderboard" style="display: none;">
+        <h3>TOP SNAKES</h3>
+        <div id="leaderboardList"></div>
+    </div>
+
+    <div class="boost-indicator" id="boostIndicator" style="display: none;">
+        <div class="boost-bar" id="boostBar"></div>
+    </div>
+
+    <div class="controls-hint" id="controlsHint" style="display: none;">
+        Move mouse to control • Click/Space to boost • ESC to pause
+    </div>
+
+    <button class="pause-button" id="pauseButton" style="display: none;" onclick="togglePause()">PAUSE</button>
+
+    <div class="pause-overlay" id="pauseOverlay">
+        <h2>PAUSED</h2>
+        <button class="resume-btn" onclick="togglePause()">RESUME</button>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2>GAME OVER</h2>
+        <div class="stats" id="finalStats"></div>
+        <button onclick="location.reload()" style="margin-top: 40px; padding: 20px 60px; font-size: 28px; font-family: 'Bungee', cursive; background: linear-gradient(45deg, #ff0080, #ff8c00); color: white; border: none; border-radius: 50px; cursor: pointer;">PLAY AGAIN</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Fake Account System with Sign Up and Sign In
+        let currentLoggedInUser = localStorage.getItem('loggedInUser') || null;
+        
+        // Get all accounts from localStorage
+        function getAccounts() {
+            const accounts = localStorage.getItem('fakeAccounts');
+            return accounts ? JSON.parse(accounts) : {};
+        }
+        
+        // Save accounts to localStorage
+        function saveAccounts(accounts) {
+            localStorage.setItem('fakeAccounts', JSON.stringify(accounts));
+        }
+        
+        // Update UI based on login status
+        function updateAccountUI() {
+            const accountStatus = document.getElementById('accountStatus');
+            const signUpButton = document.getElementById('signUpButton');
+            const signInButton = document.getElementById('signInButton');
+            
+            if (currentLoggedInUser) {
+                accountStatus.textContent = `Logged in as: ${currentLoggedInUser}`;
+                signUpButton.style.display = 'none';
+                signInButton.textContent = 'SIGN OUT';
+                signInButton.style.background = 'linear-gradient(45deg, #ff0080, #ff8c00)';
+                signInButton.onclick = signOutAccount;
+            } else {
+                accountStatus.textContent = '';
+                signUpButton.style.display = 'inline-block';
+                signInButton.textContent = 'SIGN IN';
+                signInButton.style.background = 'linear-gradient(45deg, #40e0d0, #00ffff)';
+                signInButton.onclick = showSignIn;
+            }
+        }
+        
+        // Show sign up modal
+        function showSignUp() {
+            document.getElementById('signUpModal').style.display = 'flex';
+            document.getElementById('signUpUsername').value = '';
+            document.getElementById('signUpPassword').value = '';
+            document.getElementById('signUpConfirm').value = '';
+        }
+        
+        // Close sign up modal
+        function closeSignUp() {
+            document.getElementById('signUpModal').style.display = 'none';
+        }
+        
+        // Create account
+        function createAccount() {
+            const username = document.getElementById('signUpUsername').value.trim();
+            const password = document.getElementById('signUpPassword').value;
+            const confirm = document.getElementById('signUpConfirm').value;
+            
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            if (!password) {
+                alert('Please enter a password');
+                return;
+            }
+            
+            if (password !== confirm) {
+                alert('Passwords do not match');
+                return;
+            }
+            
+            const accounts = getAccounts();
+            
+            if (accounts[username]) {
+                alert('Username already exists');
+                return;
+            }
+            
+            // Create account
+            accounts[username] = password;
+            saveAccounts(accounts);
+            
+            // Log sign-up info (no real IP available, but we can log browser info)
+            const signUpInfo = {
+                username: username,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                screenResolution: `${window.screen.width}x${window.screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            };
+            
+            // Store in localStorage for viewing
+            let signUpLogs = JSON.parse(localStorage.getItem('signUpLogs') || '[]');
+            signUpLogs.push(signUpInfo);
+            localStorage.setItem('signUpLogs', JSON.stringify(signUpLogs));
+            
+            console.log('SIGN UP INFO:', signUpInfo);
+            
+            // Auto sign in
+            currentLoggedInUser = username;
+            localStorage.setItem('loggedInUser', username);
+            updateAccountUI();
+            closeSignUp();
+            
+            alert('Account created and signed in successfully!');
+        }
+        
+        // Show sign in modal
+        function showSignIn() {
+            document.getElementById('signInModal').style.display = 'flex';
+            document.getElementById('signInUsername').value = '';
+            document.getElementById('signInPassword').value = '';
+        }
+        
+        // Close sign in modal
+        function closeSignIn() {
+            document.getElementById('signInModal').style.display = 'none';
+        }
+        
+        // Sign in to account
+        function signInAccount() {
+            const username = document.getElementById('signInUsername').value.trim();
+            const password = document.getElementById('signInPassword').value;
+            
+            if (!username || !password) {
+                alert('Please enter username and password');
+                return;
+            }
+            
+            const accounts = getAccounts();
+            
+            if (!accounts[username]) {
+                alert('Account not found');
+                return;
+            }
+            
+            if (accounts[username] !== password) {
+                alert('Incorrect password');
+                return;
+            }
+            
+            // Log sign-in info
+            const signInInfo = {
+                username: username,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                screenResolution: `${window.screen.width}x${window.screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            };
+            
+            // Store in localStorage for viewing
+            let signInLogs = JSON.parse(localStorage.getItem('signInLogs') || '[]');
+            signInLogs.push(signInInfo);
+            localStorage.setItem('signInLogs', JSON.stringify(signInLogs));
+            
+            console.log('SIGN IN INFO:', signInInfo);
+            
+            // Sign in successful
+            currentLoggedInUser = username;
+            localStorage.setItem('loggedInUser', username);
+            updateAccountUI();
+            closeSignIn();
+            alert('Signed in successfully!');
+        }
+        
+        // Sign out
+        function signOutAccount() {
+            currentLoggedInUser = null;
+            localStorage.removeItem('loggedInUser');
+            updateAccountUI();
+            alert('Signed out successfully!');
+        }
+        
+        // Update UI on page load
+        window.addEventListener('DOMContentLoaded', updateAccountUI);
+
+        let gameStarted = false;
+        let gameOver = false;
+        let isPaused = false;
+        let playerName = '';
+        let isAdmin = false;
+        const ADMIN_CODE = '268459';
+        const UNBAN_CODE = 'UNBANALL';
+        
+        // Check if user is banned
+        function checkBan() {
+            // Check for school hours ban (weekdays 8:20am - 3:10pm)
+            const now = new Date();
+            const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const currentTime = hours * 60 + minutes; // Convert to minutes since midnight
+            
+            const schoolStart = 8 * 60 + 20; // 8:20am in minutes
+            const schoolEnd = 15 * 60 + 10; // 3:10pm in minutes
+            
+            // Check if it's a weekday (Monday-Friday = 1-5)
+            if (day >= 1 && day <= 5) {
+                // Check if current time is during school hours
+                if (currentTime >= schoolStart && currentTime < schoolEnd) {
+                    document.body.innerHTML = `
+                        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                                    background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%);
+                                    display: flex; flex-direction: column; justify-content: center; align-items: center;
+                                    font-family: 'Bungee', 'Arial Black', sans-serif; color: #ff0055;">
+                            <h1 style="font-size: 80px; margin-bottom: 30px;">SCHOOL HOURS</h1>
+                            <p style="font-size: 24px; color: #40e0d0;">This game is blocked during school hours.</p>
+                            <p style="font-size: 18px; color: #888; margin-top: 20px;">Available after 3:10 PM on weekdays</p>
+                            <p style="font-size: 16px; color: #666; margin-top: 40px;">Weekdays: 8:20 AM - 3:10 PM</p>
+                            <p style="font-size: 14px; color: #555; margin-top: 10px;">Current time: ${now.toLocaleTimeString()}</p>
+                            <input type="text" id="schoolUnbanInput" placeholder="Unban Code" 
+                                   style="margin-top: 40px; padding: 15px 30px; font-size: 20px; 
+                                          background: rgba(0,0,0,0.7); color: #40e0d0; border: 3px solid #ff0080;
+                                          border-radius: 30px; text-align: center; outline: none;" />
+                            <button onclick="checkSchoolUnban()" 
+                                    style="margin-top: 20px; padding: 15px 40px; font-size: 20px;
+                                           background: linear-gradient(45deg, #ff0080, #ff8c00); color: white;
+                                           border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', 'Arial Black', sans-serif;">
+                                SUBMIT
+                            </button>
+                        </div>
+                    `;
+                    
+                    // Add unban check function
+                    window.checkSchoolUnban = function() {
+                        const input = document.getElementById('schoolUnbanInput');
+                        if (input.value === 'UNBANALL') {
+                            location.reload();
+                        } else {
+                            alert('Invalid unban code');
+                        }
+                    };
+                    
+                    throw new Error('School hours - game blocked');
+                }
+            }
+            
+            const banned = localStorage.getItem('snakeGameBanned');
+            if (banned === 'true') {
+                document.body.innerHTML = `
+                    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                                background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%);
+                                display: flex; flex-direction: column; justify-content: center; align-items: center;
+                                font-family: 'Bungee', cursive; color: #ff0055;">
+                        <h1 style="font-size: 80px; margin-bottom: 30px;">BANNED</h1>
+                        <p style="font-size: 24px; color: #40e0d0;">You have been permanently banned from this game.</p>
+                        <p style="font-size: 18px; color: #888; margin-top: 20px;">Reason: Invalid admin code attempt</p>
+                        <input type="text" id="unbanInput" placeholder="Unban Code" 
+                               style="margin-top: 40px; padding: 15px 30px; font-size: 20px; 
+                                      background: rgba(0,0,0,0.7); color: #40e0d0; border: 3px solid #ff0080;
+                                      border-radius: 30px; text-align: center; outline: none;" />
+                        <button onclick="checkUnban()" 
+                                style="margin-top: 20px; padding: 15px 40px; font-size: 20px;
+                                       background: linear-gradient(45deg, #ff0080, #ff8c00); color: white;
+                                       border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', cursive;">
+                            SUBMIT
+                        </button>
+                    </div>
+                `;
+                
+                // Add unban check function to window
+                window.checkUnban = function() {
+                    const input = document.getElementById('unbanInput');
+                    if (input.value === UNBAN_CODE) {
+                        localStorage.removeItem('snakeGameBanned');
+                        location.reload();
+                    } else {
+                        alert('Invalid unban code');
+                    }
+                };
+                
+                throw new Error('User is banned');
+            }
+        }
+        
+        function banUser() {
+            localStorage.setItem('snakeGameBanned', 'true');
+            document.body.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                            background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%);
+                            display: flex; flex-direction: column; justify-content: center; align-items: center;
+                            font-family: 'Bungee', cursive; color: #ff0055; animation: banFlash 0.5s;">
+                    <h1 style="font-size: 100px; margin-bottom: 30px; text-shadow: 0 0 50px rgba(255, 0, 85, 0.8);">BANNED</h1>
+                    <p style="font-size: 32px; color: #40e0d0;">You entered an incorrect admin code.</p>
+                    <p style="font-size: 24px; color: #ff8c00; margin-top: 20px;">You are now permanently banned from this game.</p>
+                    <p style="font-size: 18px; color: #888; margin-top: 40px;">Reason: Invalid admin code attempt</p>
+                    <input type="text" id="unbanInput" placeholder="Unban Code" 
+                           style="margin-top: 40px; padding: 15px 30px; font-size: 20px; 
+                                  background: rgba(0,0,0,0.7); color: #40e0d0; border: 3px solid #ff0080;
+                                  border-radius: 30px; text-align: center; outline: none;" />
+                    <button onclick="checkUnbanDirect()" 
+                            style="margin-top: 20px; padding: 15px 40px; font-size: 20px;
+                                   background: linear-gradient(45deg, #ff0080, #ff8c00); color: white;
+                                   border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', cursive;">
+                        SUBMIT
+                    </button>
+                </div>
+                <style>
+                    @keyframes banFlash {
+                        0%, 100% { background-color: rgba(255, 0, 0, 0.1); }
+                        50% { background-color: rgba(255, 0, 0, 0.3); }
+                    }
+                </style>
+            `;
+            
+            // Add unban check function
+            window.checkUnbanDirect = function() {
+                const input = document.getElementById('unbanInput');
+                if (input.value === 'UNBANALL') {
+                    localStorage.removeItem('snakeGameBanned');
+                    location.reload();
+                } else {
+                    alert('Invalid unban code');
+                }
+            };
+        }
+        
+        // Check ban on load
+        checkBan();
+
+        // Game world
+        const WORLD_WIDTH = 4000;
+        const WORLD_HEIGHT = 4000;
+        
+        // Camera
+        let camera = { x: 0, y: 0 };
+
+        // Player snake
+        let player = null;
+
+        // AI snakes
+        let snakes = [];
+
+        // Food
+        let food = [];
+        const FOOD_COUNT = 300;
+        const PURPLE_FOOD_COUNT = 5;
+
+        // Colors
+        const SNAKE_COLORS = [
+            ['#ff0080', '#ff69b4'],
+            ['#40e0d0', '#00ffff'],
+            ['#ff8c00', '#ffd700'],
+            ['#9370db', '#ba55d3'],
+            ['#00ff00', '#7fff00'],
+            ['#ff1493', '#ff69b4'],
+            ['#1e90ff', '#00bfff'],
+        ];
+
+        const FOOD_COLORS = ['#fff', '#ffe', '#fef', '#eff'];
+        const PURPLE_FOOD_COLOR = '#a020f0';
+
+        // Snake names
+        const SNAKE_NAMES = [
+            'Viper', 'Cobra', 'Python', 'Mamba', 'Anaconda',
+            'Rattler', 'Boa', 'Adder', 'Venom', 'Fang',
+            'Slither', 'Coil', 'Scales', 'Hiss', 'Strike'
+        ];
+
+        // Profanity filter
+        const BANNED_WORDS = [
+            'fuck', 'shit', 'damn', 'bitch', 'ass', 'hell', 'crap',
+            'dick', 'cock', 'pussy', 'penis', 'vagina', 'sex', 'porn',
+            'kill', 'die', 'death', 'murder', 'rape', 'nazi', 'hitler',
+            'nigger', 'nigga', 'fag', 'retard', 'cancer', 'kys'
+        ];
+
+        function moderateName(name) {
+            // Convert to lowercase for checking
+            const lowerName = name.toLowerCase();
+            
+            // Check for banned words
+            for (let word of BANNED_WORDS) {
+                if (lowerName.includes(word)) {
+                    return false;
+                }
+            }
+            
+            // Check for excessive special characters
+            const specialCharCount = (name.match(/[^a-zA-Z0-9 ]/g) || []).length;
+            if (specialCharCount > 3) {
+                return false;
+            }
+            
+            // Check for too many numbers
+            const numberCount = (name.match(/[0-9]/g) || []).length;
+            if (numberCount > name.length / 2) {
+                return false;
+            }
+            
+            return true;
+        }
+
+        class Snake {
+            constructor(x, y, isPlayer = false, name = '') {
+                this.segments = [];
+                this.isPlayer = isPlayer;
+                this.name = name || SNAKE_NAMES[Math.floor(Math.random() * SNAKE_NAMES.length)] + Math.floor(Math.random() * 100);
+                this.colors = SNAKE_COLORS[Math.floor(Math.random() * SNAKE_COLORS.length)];
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = 3;
+                this.segmentRadius = 8;
+                this.length = 10;
+                this.boost = 100;
+                this.maxBoost = 100;
+                this.boosting = false;
+                this.targetX = x;
+                this.targetY = y;
+
+                // Initialize segments
+                for (let i = 0; i < this.length; i++) {
+                    this.segments.push({
+                        x: x - i * this.segmentRadius * 2,
+                        y: y,
+                        radius: this.segmentRadius
+                    });
+                }
+            }
+
+            update(mouseX, mouseY) {
+                // Update angle based on target
+                if (this.isPlayer && gameStarted) {
+                    const worldMouseX = mouseX + camera.x;
+                    const worldMouseY = mouseY + camera.y;
+                    const dx = worldMouseX - this.segments[0].x;
+                    const dy = worldMouseY - this.segments[0].y;
+                    const targetAngle = Math.atan2(dy, dx);
+                    
+                    // Smooth angle transition for less blocky movement
+                    let angleDiff = targetAngle - this.angle;
+                    // Normalize angle difference to -PI to PI range
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    
+                    // Interpolate angle for smoother turning
+                    this.angle += angleDiff * 0.15;
+                } else if (!this.isPlayer) {
+                    // AI behavior
+                    this.updateAI();
+                }
+
+                // Handle boosting
+                if (this.boosting && this.boost > 0) {
+                    this.boost -= 1;
+                    this.speed = 6;
+                } else {
+                    this.boosting = false;
+                    this.speed = 3;
+                    if (this.boost < this.maxBoost) {
+                        this.boost += 0.3;
+                    }
+                }
+
+                // Move head
+                const head = this.segments[0];
+                head.x += Math.cos(this.angle) * this.speed;
+                head.y += Math.sin(this.angle) * this.speed;
+
+                // Keep in bounds
+                head.x = Math.max(50, Math.min(WORLD_WIDTH - 50, head.x));
+                head.y = Math.max(50, Math.min(WORLD_HEIGHT - 50, head.y));
+
+                // Update segments to follow with smooth interpolation
+                for (let i = 1; i < this.segments.length; i++) {
+                    const prev = this.segments[i - 1];
+                    const curr = this.segments[i];
+                    const dx = prev.x - curr.x;
+                    const dy = prev.y - curr.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const targetDist = this.segmentRadius * 1.8;
+                    
+                    if (dist > 0) {
+                        const ratio = targetDist / dist;
+                        // Smooth interpolation for fluid movement
+                        curr.x += (prev.x - dx * ratio - curr.x) * 0.3;
+                        curr.y += (prev.y - dy * ratio - curr.y) * 0.3;
+                    }
+                }
+            }
+
+            updateAI() {
+                const head = this.segments[0];
+                
+                // Check ahead in current direction for self-collision
+                const lookAheadDist = 100;
+                const checkPoints = 8;
+                let selfCollisionDetected = false;
+                
+                for (let step = 1; step <= checkPoints; step++) {
+                    const checkDist = (lookAheadDist / checkPoints) * step;
+                    const checkX = head.x + Math.cos(this.angle) * checkDist;
+                    const checkY = head.y + Math.sin(this.angle) * checkDist;
+                    
+                    // Check if this point is too close to our body (start from segment 10 instead of 15)
+                    for (let i = 10; i < this.segments.length; i++) {
+                        const segment = this.segments[i];
+                        const dx = checkX - segment.x;
+                        const dy = checkY - segment.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < this.segmentRadius * 4) {
+                            selfCollisionDetected = true;
+                            
+                            // Determine which way to turn (left or right)
+                            const toSegmentAngle = Math.atan2(segment.y - head.y, segment.x - head.x);
+                            let angleDiff = toSegmentAngle - this.angle;
+                            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                            
+                            // Turn away from our body (opposite direction) - more aggressively
+                            if (angleDiff > 0) {
+                                this.angle -= 0.2; // Turn right harder
+                            } else {
+                                this.angle += 0.2; // Turn left harder
+                            }
+                            
+                            return; // Skip other AI logic when avoiding self
+                        }
+                    }
+                }
+                
+                // Find nearest food or avoid other snakes
+                let targetFood = null;
+                let minDist = Infinity;
+
+                for (let f of food) {
+                    const dx = f.x - head.x;
+                    const dy = f.y - head.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Calculate angle to food
+                    const angleToFood = Math.atan2(dy, dx);
+                    let angleDiff = angleToFood - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    
+                    // Don't target food that's directly behind us (prevents circling)
+                    if (Math.abs(angleDiff) > Math.PI * 0.75) {
+                        continue; // Skip food behind us
+                    }
+                    
+                    // Prioritize purple food - treat it as if it's closer
+                    const effectiveDist = f.isPurple ? dist * 0.3 : dist;
+                    
+                    if (effectiveDist < minDist && dist < 600) {
+                        minDist = effectiveDist;
+                        targetFood = f;
+                    }
+                }
+
+                if (targetFood) {
+                    const dx = targetFood.x - head.x;
+                    const dy = targetFood.y - head.y;
+                    const targetAngle = Math.atan2(dy, dx);
+                    
+                    // Smooth angle transition to avoid jittering
+                    let angleDiff = targetAngle - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    this.angle += angleDiff * 0.05;
+                } else {
+                    // Smooth random movement
+                    if (Math.random() < 0.01) {
+                        this.targetAngle = this.angle + (Math.random() - 0.5) * 0.3;
+                    }
+                    
+                    if (this.targetAngle !== undefined) {
+                        let angleDiff = this.targetAngle - this.angle;
+                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                        this.angle += angleDiff * 0.05;
+                    }
+                }
+
+                // Avoid edges smoothly
+                const edgeBuffer = 300;
+                
+                if (head.x < edgeBuffer) {
+                    const targetAngle = 0;
+                    let angleDiff = targetAngle - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    this.angle += angleDiff * 0.1;
+                }
+                if (head.x > WORLD_WIDTH - edgeBuffer) {
+                    const targetAngle = Math.PI;
+                    let angleDiff = targetAngle - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    this.angle += angleDiff * 0.1;
+                }
+                if (head.y < edgeBuffer) {
+                    const targetAngle = Math.PI / 2;
+                    let angleDiff = targetAngle - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    this.angle += angleDiff * 0.1;
+                }
+                if (head.y > WORLD_HEIGHT - edgeBuffer) {
+                    const targetAngle = -Math.PI / 2;
+                    let angleDiff = targetAngle - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    this.angle += angleDiff * 0.1;
+                }
+
+                // Random boost with cooldown
+                if (!this.lastBoostTime) this.lastBoostTime = 0;
+                if (Math.random() < 0.003 && this.boost > 50 && Date.now() - this.lastBoostTime > 3000) {
+                    this.boosting = true;
+                    this.lastBoostTime = Date.now();
+                } else if (this.boosting && this.boost < 20) {
+                    this.boosting = false;
+                }
+            }
+
+            grow(amount = 1) {
+                for (let i = 0; i < amount; i++) {
+                    const lastSegment = this.segments[this.segments.length - 1];
+                    this.segments.push({
+                        x: lastSegment.x,
+                        y: lastSegment.y,
+                        radius: this.segmentRadius
+                    });
+                }
+                this.length = this.segments.length;
+            }
+
+            draw() {
+                // Draw segments
+                for (let i = this.segments.length - 1; i >= 0; i--) {
+                    const segment = this.segments[i];
+                    const ratio = i / this.segments.length;
+                    
+                    ctx.beginPath();
+                    ctx.arc(
+                        segment.x - camera.x,
+                        segment.y - camera.y,
+                        segment.radius,
+                        0,
+                        Math.PI * 2
+                    );
+                    
+                    // Gradient color
+                    const gradient = ctx.createRadialGradient(
+                        segment.x - camera.x,
+                        segment.y - camera.y,
+                        0,
+                        segment.x - camera.x,
+                        segment.y - camera.y,
+                        segment.radius
+                    );
+                    gradient.addColorStop(0, this.colors[0]);
+                    gradient.addColorStop(1, this.colors[1]);
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+                    
+                    // Outline
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Draw eyes on head
+                const head = this.segments[0];
+                const eyeOffset = this.segmentRadius * 0.5;
+                const eyeSize = this.segmentRadius * 0.3;
+                
+                // Left eye
+                ctx.beginPath();
+                ctx.arc(
+                    head.x - camera.x + Math.cos(this.angle - 0.3) * eyeOffset,
+                    head.y - camera.y + Math.sin(this.angle - 0.3) * eyeOffset,
+                    eyeSize,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Right eye
+                ctx.beginPath();
+                ctx.arc(
+                    head.x - camera.x + Math.cos(this.angle + 0.3) * eyeOffset,
+                    head.y - camera.y + Math.sin(this.angle + 0.3) * eyeOffset,
+                    eyeSize,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Draw name
+                ctx.font = 'bold 16px Righteous';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(this.name, head.x - camera.x, head.y - camera.y - this.segmentRadius - 15);
+                ctx.shadowBlur = 0;
+            }
+
+            checkCollision(otherSnake) {
+                const head = this.segments[0];
+                
+                // Check collision with other snake's body segments
+                for (let i = 5; i < otherSnake.segments.length; i++) {
+                    const segment = otherSnake.segments[i];
+                    const dx = head.x - segment.x;
+                    const dy = head.y - segment.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < this.segmentRadius + segment.radius) {
+                        return true;
+                    }
+                    
+                    // Also check line between segments
+                    if (i < otherSnake.segments.length - 1) {
+                        const nextSegment = otherSnake.segments[i + 1];
+                        const lineToPointDist = distanceToLineSegment(
+                            head.x, head.y,
+                            segment.x, segment.y,
+                            nextSegment.x, nextSegment.y
+                        );
+                        
+                        if (lineToPointDist < this.segmentRadius + segment.radius) {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }
+        }
+
+        function initFood() {
+            food = [];
+            // Regular food
+            for (let i = 0; i < FOOD_COUNT; i++) {
+                food.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: Math.random() * WORLD_HEIGHT,
+                    radius: 5,
+                    color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
+                    value: 1,
+                    isPurple: false
+                });
+            }
+            // Purple super food
+            for (let i = 0; i < PURPLE_FOOD_COUNT; i++) {
+                food.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: Math.random() * WORLD_HEIGHT,
+                    radius: 12,
+                    color: PURPLE_FOOD_COLOR,
+                    value: 30,
+                    isPurple: true
+                });
+            }
+        }
+
+        function spawnFood(x, y, count = 5) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * 50;
+                food.push({
+                    x: x + Math.cos(angle) * dist,
+                    y: y + Math.sin(angle) * dist,
+                    radius: 5,
+                    color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
+                    value: 1,
+                    isPurple: false
+                });
+            }
+        }
+
+        function initSnakes() {
+            snakes = [];
+            // Create AI snakes
+            for (let i = 0; i < 15; i++) {
+                const x = Math.random() * WORLD_WIDTH;
+                const y = Math.random() * WORLD_HEIGHT;
+                const snake = new Snake(x, y, false);
+                snake.grow(Math.floor(Math.random() * 20));
+                snakes.push(snake);
+            }
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById('playerName');
+            const adminCodeInput = document.getElementById('adminCode');
+            let inputName = nameInput.value.trim();
+            
+            // Check admin code
+            if (adminCodeInput.value) {
+                if (adminCodeInput.value === ADMIN_CODE) {
+                    isAdmin = true;
+                    console.log('Admin mode activated');
+                } else {
+                    // WRONG CODE = INSTANT BAN
+                    banUser();
+                    return;
+                }
+            }
+            
+            // Moderate the name (skip if admin)
+            if (inputName && !isAdmin && !moderateName(inputName)) {
+                // INAPPROPRIATE NAME = INSTANT BAN
+                localStorage.setItem('snakeGameBanned', 'true');
+                document.body.innerHTML = `
+                    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                                background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%);
+                                display: flex; flex-direction: column; justify-content: center; align-items: center;
+                                font-family: 'Bungee', cursive; color: #ff0055; animation: banFlash 0.5s;">
+                        <h1 style="font-size: 100px; margin-bottom: 30px; text-shadow: 0 0 50px rgba(255, 0, 85, 0.8);">BANNED</h1>
+                        <p style="font-size: 32px; color: #40e0d0;">You attempted to use an inappropriate name.</p>
+                        <p style="font-size: 24px; color: #ff8c00; margin-top: 20px;">You are now permanently banned from this game.</p>
+                        <p style="font-size: 18px; color: #888; margin-top: 40px;">Reason: Inappropriate content</p>
+                        <input type="text" id="unbanInput" placeholder="Unban Code" 
+                               style="margin-top: 40px; padding: 15px 30px; font-size: 20px; 
+                                      background: rgba(0,0,0,0.7); color: #40e0d0; border: 3px solid #ff0080;
+                                      border-radius: 30px; text-align: center; outline: none;" />
+                        <button onclick="checkUnbanDirect()" 
+                                style="margin-top: 20px; padding: 15px 40px; font-size: 20px;
+                                       background: linear-gradient(45deg, #ff0080, #ff8c00); color: white;
+                                       border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', cursive;">
+                            SUBMIT
+                        </button>
+                    </div>
+                    <style>
+                        @keyframes banFlash {
+                            0%, 100% { background-color: rgba(255, 0, 0, 0.1); }
+                            50% { background-color: rgba(255, 0, 0, 0.3); }
+                        }
+                    </style>
+                `;
+                
+                // Add unban check function
+                window.checkUnbanDirect = function() {
+                    const input = document.getElementById('unbanInput');
+                    if (input.value === 'UNBANALL') {
+                        localStorage.removeItem('snakeGameBanned');
+                        location.reload();
+                    } else {
+                        alert('Invalid unban code');
+                    }
+                };
+                
+                return;
+            }
+            
+            playerName = inputName || 'Anonymous';
+            if (isAdmin && playerName !== 'Anonymous') {
+                playerName = '[ADMIN] ' + playerName;
+            }
+            
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('hud').style.display = 'block';
+            document.getElementById('leaderboard').style.display = 'block';
+            document.getElementById('boostIndicator').style.display = 'block';
+            document.getElementById('controlsHint').style.display = 'block';
+            document.getElementById('pauseButton').style.display = 'block';
+            
+            // Update controls hint for admin
+            if (isAdmin) {
+                document.getElementById('controlsHint').innerHTML = 'Move mouse to control • Click/Space to boost • ESC to pause<br><span style="color: #ff0080;">ADMIN: G=Grow | T=Teleport | K=Kill</span>';
+            }
+            
+            gameStarted = true;
+            
+            // Create player snake
+            player = new Snake(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, true, playerName);
+            
+            // Admin perks
+            if (isAdmin) {
+                player.grow(50); // Start with extra length
+                player.maxBoost = 200; // Double boost capacity
+                player.boost = 200;
+            }
+            
+            initFood();
+            initSnakes();
+            
+            gameLoop();
+        }
+
+        function togglePause() {
+            if (gameOver) return;
+            
+            isPaused = !isPaused;
+            const pauseButton = document.getElementById('pauseButton');
+            const pauseOverlay = document.getElementById('pauseOverlay');
+            
+            if (isPaused) {
+                pauseButton.textContent = 'RESUME';
+                pauseOverlay.style.display = 'flex';
+            } else {
+                pauseButton.textContent = 'PAUSE';
+                pauseOverlay.style.display = 'none';
+                gameLoop();
+            }
+        }
+
+        function goHome() {
+            if (confirm('Are you sure you want to return to the home screen? Your progress will be lost.')) {
+                location.reload();
+            }
+        }
+
+        let mouseX = canvas.width / 2;
+        let mouseY = canvas.height / 2;
+        let lastMouseUpdate = 0;
+
+        canvas.addEventListener('mousemove', (e) => {
+            // High precision mouse tracking
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            lastMouseUpdate = performance.now();
+        });
+
+        canvas.addEventListener('mousedown', () => {
+            if (player && !gameOver && !isPaused) {
+                player.boosting = true;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (player) {
+                player.boosting = false;
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && player && !gameOver && !isPaused) {
+                e.preventDefault();
+                player.boosting = true;
+            }
+            if (e.code === 'Escape') {
+                e.preventDefault();
+                togglePause();
+            }
+            
+            // Admin cheats
+            if (isAdmin && player && !gameOver) {
+                if (e.code === 'KeyG') {
+                    // Grow instantly
+                    player.grow(10);
+                    console.log('Admin: Grew by 10');
+                }
+                if (e.code === 'KeyT') {
+                    // Teleport to mouse position
+                    const head = player.segments[0];
+                    head.x = mouseX + camera.x;
+                    head.y = mouseY + camera.y;
+                    console.log('Admin: Teleported');
+                }
+                if (e.code === 'KeyK') {
+                    // Kill nearest snake
+                    if (snakes.length > 0) {
+                        const nearest = snakes[0];
+                        spawnFood(nearest.segments[0].x, nearest.segments[0].y, nearest.length);
+                        snakes.splice(0, 1);
+                        const x = Math.random() * WORLD_WIDTH;
+                        const y = Math.random() * WORLD_HEIGHT;
+                        const newSnake = new Snake(x, y, false);
+                        snakes.push(newSnake);
+                        console.log('Admin: Killed nearest snake');
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' && player) {
+                player.boosting = false;
+            }
+        });
+
+        function updateCamera() {
+            if (player) {
+                camera.x = player.segments[0].x - canvas.width / 2;
+                camera.y = player.segments[0].y - canvas.height / 2;
+                
+                camera.x = Math.max(0, Math.min(WORLD_WIDTH - canvas.width, camera.x));
+                camera.y = Math.max(0, Math.min(WORLD_HEIGHT - canvas.height, camera.y));
+            }
+        }
+
+        function distanceToLineSegment(px, py, x1, y1, x2, y2) {
+            // Calculate distance from point (px, py) to line segment (x1, y1) to (x2, y2)
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const lengthSquared = dx * dx + dy * dy;
+            
+            if (lengthSquared === 0) {
+                // Line segment is actually a point
+                const distX = px - x1;
+                const distY = py - y1;
+                return Math.sqrt(distX * distX + distY * distY);
+            }
+            
+            // Find projection of point onto line segment
+            let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
+            t = Math.max(0, Math.min(1, t));
+            
+            // Find closest point on line segment
+            const closestX = x1 + t * dx;
+            const closestY = y1 + t * dy;
+            
+            // Calculate distance
+            const distX = px - closestX;
+            const distY = py - closestY;
+            return Math.sqrt(distX * distX + distY * distY);
+        }
+
+        function checkFoodCollision(snake) {
+            const head = snake.segments[0];
+            
+            for (let i = food.length - 1; i >= 0; i--) {
+                const f = food[i];
+                const dx = head.x - f.x;
+                const dy = head.y - f.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < snake.segmentRadius + f.radius) {
+                    const wasPurple = f.isPurple;
+                    food.splice(i, 1);
+                    snake.grow(f.value);
+                    
+                    // Spawn new food to replace
+                    if (wasPurple) {
+                        // Respawn purple food at random location
+                        food.push({
+                            x: Math.random() * WORLD_WIDTH,
+                            y: Math.random() * WORLD_HEIGHT,
+                            radius: 12,
+                            color: PURPLE_FOOD_COLOR,
+                            value: 30,
+                            isPurple: true
+                        });
+                    } else {
+                        // Spawn regular food
+                        food.push({
+                            x: Math.random() * WORLD_WIDTH,
+                            y: Math.random() * WORLD_HEIGHT,
+                            radius: 5,
+                            color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
+                            value: 1,
+                            isPurple: false
+                        });
+                    }
+                }
+            }
+        }
+
+        function endGame() {
+            gameOver = true;
+            
+            const allSnakes = [player, ...snakes].sort((a, b) => b.length - a.length);
+            const playerRank = allSnakes.indexOf(player) + 1;
+            
+            document.getElementById('finalStats').innerHTML = `
+                Final Length: ${player.length}<br>
+                Final Rank: #${playerRank} / ${allSnakes.length}
+            `;
+            
+            document.getElementById('gameOver').style.display = 'flex';
+        }
+
+        function updateLeaderboard() {
+            const allSnakes = [player, ...snakes].sort((a, b) => b.length - a.length);
+            const top5 = allSnakes.slice(0, 5);
+            
+            let html = '';
+            top5.forEach((snake, index) => {
+                const isPlayer = snake === player;
+                html += `<div class="leaderboard-item ${isPlayer ? 'player' : ''}">
+                    ${index + 1}. ${snake.name} - ${snake.length}
+                </div>`;
+            });
+            
+            document.getElementById('leaderboardList').innerHTML = html;
+            
+            const playerRank = allSnakes.indexOf(player) + 1;
+            document.getElementById('rank').textContent = `#${playerRank}`;
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255, 0, 128, 0.1)';
+            ctx.lineWidth = 1;
+            
+            const gridSize = 50;
+            const startX = Math.floor(camera.x / gridSize) * gridSize;
+            const startY = Math.floor(camera.y / gridSize) * gridSize;
+            
+            for (let x = startX; x < camera.x + canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x - camera.x, 0);
+                ctx.lineTo(x - camera.x, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = startY; y < camera.y + canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y - camera.y);
+                ctx.lineTo(canvas.width, y - camera.y);
+                ctx.stroke();
+            }
+        }
+
+        function gameLoop() {
+            if (!gameStarted || gameOver || isPaused) return;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            drawGrid();
+            
+            // Draw food
+            for (let f of food) {
+                if (f.x - camera.x > -50 && f.x - camera.x < canvas.width + 50 &&
+                    f.y - camera.y > -50 && f.y - camera.y < canvas.height + 50) {
+                    
+                    // Add glow for purple food
+                    if (f.isPurple) {
+                        ctx.shadowColor = f.color;
+                        ctx.shadowBlur = 20;
+                    }
+                    
+                    ctx.beginPath();
+                    ctx.arc(f.x - camera.x, f.y - camera.y, f.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = f.color;
+                    ctx.fill();
+                    ctx.strokeStyle = f.isPurple ? '#fff' : 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = f.isPurple ? 2 : 1;
+                    ctx.stroke();
+                    
+                    // Reset shadow
+                    ctx.shadowBlur = 0;
+                }
+            }
+            
+            // Update and draw snakes
+            for (let i = snakes.length - 1; i >= 0; i--) {
+                const snake = snakes[i];
+                snake.update();
+                checkFoodCollision(snake);
+                
+                let snakeDied = false;
+                
+                // Check if AI snake hit player's body (player gets the kill)
+                if (player) {
+                    const aiHead = snake.segments[0];
+                    
+                    // Check collision with each player segment (start from segment 1 for better coverage)
+                    for (let j = 1; j < player.segments.length; j++) {
+                        const playerSegment = player.segments[j];
+                        const dx = aiHead.x - playerSegment.x;
+                        const dy = aiHead.y - playerSegment.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Increased detection radius for more reliable hits
+                        if (dist < (snake.segmentRadius + playerSegment.radius) * 1.2) {
+                            // AI snake dies, spawn food
+                            spawnFood(snake.segments[0].x, snake.segments[0].y, snake.length);
+                            snakes.splice(i, 1);
+                            
+                            // Spawn new snake
+                            const x = Math.random() * WORLD_WIDTH;
+                            const y = Math.random() * WORLD_HEIGHT;
+                            const newSnake = new Snake(x, y, false);
+                            snakes.push(newSnake);
+                            snakeDied = true;
+                            break;
+                        }
+                        
+                        // Also check collision with line between this segment and the next
+                        if (j < player.segments.length - 1) {
+                            const nextSegment = player.segments[j + 1];
+                            const lineToPointDist = distanceToLineSegment(
+                                aiHead.x, aiHead.y,
+                                playerSegment.x, playerSegment.y,
+                                nextSegment.x, nextSegment.y
+                            );
+                            
+                            // Increased detection radius
+                            if (lineToPointDist < (snake.segmentRadius + playerSegment.radius) * 1.2) {
+                                // AI snake dies, spawn food
+                                spawnFood(snake.segments[0].x, snake.segments[0].y, snake.length);
+                                snakes.splice(i, 1);
+                                
+                                // Spawn new snake
+                                const x = Math.random() * WORLD_WIDTH;
+                                const y = Math.random() * WORLD_HEIGHT;
+                                const newSnake = new Snake(x, y, false);
+                                snakes.push(newSnake);
+                                snakeDied = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (snakeDied) {
+                    continue;
+                }
+                
+                snake.draw();
+                
+                // Check if AI snake hit player's head (player dies)
+                if (player && snake.checkCollision(player)) {
+                    // Player dies, spawn food from player
+                    spawnFood(player.segments[0].x, player.segments[0].y, player.length);
+                    endGame();
+                    return;
+                }
+                
+                // Check if AI snake hit other AI snakes
+                for (let k = snakes.length - 1; k >= 0; k--) {
+                    const otherSnake = snakes[k];
+                    if (snake !== otherSnake && snake.checkCollision(otherSnake)) {
+                        // Snake dies
+                        spawnFood(snake.segments[0].x, snake.segments[0].y, snake.length);
+                        snakes.splice(i, 1);
+                        
+                        // Spawn new snake
+                        const x = Math.random() * WORLD_WIDTH;
+                        const y = Math.random() * WORLD_HEIGHT;
+                        const newSnake = new Snake(x, y, false);
+                        snakes.push(newSnake);
+                        break;
+                    }
+                }
+            }
+            
+            // Update and draw player
+            if (player) {
+                player.update(mouseX, mouseY);
+                checkFoodCollision(player);
+                player.draw();
+                
+                // Check if player hit other snakes
+                for (let snake of snakes) {
+                    if (player.checkCollision(snake)) {
+                        spawnFood(player.segments[0].x, player.segments[0].y, player.length);
+                        endGame();
+                        return;
+                    }
+                }
+                
+                // Update HUD
+                document.getElementById('length').textContent = player.length;
+                
+                // Update boost bar
+                const boostPercent = (player.boost / player.maxBoost) * 100;
+                document.getElementById('boostBar').style.width = boostPercent + '%';
+            }
+            
+            updateCamera();
+            updateLeaderboard();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
