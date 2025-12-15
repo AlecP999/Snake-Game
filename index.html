@@ -788,21 +788,21 @@
         });
         
         // Check if user is banned
-        function checkBan() {
+        //function checkBan() {
             // Check for school hours ban (weekdays 8:20am - 3:10pm)
-            const now = new Date();
-            const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            const currentTime = hours * 60 + minutes; // Convert to minutes since midnight
+            //const now = new Date();
+            //const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+            //const hours = now.getHours();
+            //const minutes = now.getMinutes();
+            //const currentTime = hours * 60 + minutes; // Convert to minutes since midnight
             
-            const schoolStart = 8 * 60 + 20; // 8:20am in minutes
-            const schoolEnd = 15 * 60 + 10; // 3:10pm in minutes
+            //const schoolStart = 8 * 60 + 20; // 8:20am in minutes
+            //const schoolEnd = 15 * 60 + 10; // 3:10pm in minutes
             
             // Check if it's a weekday (Monday-Friday = 1-5)
-            if (day >= 1 && day <= 5) {
+            //if (day >= 1 && day <= 5) {
                 // Check if current time is during school hours
-                if (currentTime >= schoolStart && currentTime < schoolEnd) {
+                //if (currentTime >= schoolStart && currentTime < schoolEnd) {
                     document.body.innerHTML = `
                         <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
                                     background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%);
