@@ -397,6 +397,7 @@
             <option value="ffa">FFA</option>
             <option value="suicide">SUICIDE</option>
             <option value="tdm">TDM</option>
+            <option value="hardpoint">HARDPOINT</option>
         </select>
         
         <input type="password" id="adminCode" placeholder="Admin Code (Optional)" maxlength="6" style="margin-top: 15px;" />
@@ -435,7 +436,7 @@
     <canvas id="gameCanvas"></canvas>
 
     <div class="hud" id="hud" style="display: none;">
-        <div>Length: <span id="length">10</span></div>
+        <div><span id="length">10</span></div>
         <div>Rank: <span id="rank">#1</span></div>
     </div>
 
@@ -663,6 +664,7 @@
         let isPaused = false;
         let playerName = '';
         let isAdmin = false;
+        let adminImmune = false; // Admin immunity toggle
         let gameMode = 'ffa'; // Current game mode
         const ADMIN_CODE = '268459';
         const UNBAN_CODE = 'UNBANALL';
@@ -788,58 +790,7 @@
         });
         
         // Check if user is banned
-        //function checkBan() {
-            // Check for school hours ban (weekdays 8:20am - 3:10pm)
-            //const now = new Date();
-            //const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-            //const hours = now.getHours();
-            //const minutes = now.getMinutes();
-            //const currentTime = hours * 60 + minutes; // Convert to minutes since midnight
-            
-            //const schoolStart = 8 * 60 + 20; // 8:20am in minutes
-            //const schoolEnd = 15 * 60 + 10; // 3:10pm in minutes
-            
-            // Check if it's a weekday (Monday-Friday = 1-5)
-            //if (day >= 1 && day <= 5) {
-                // Check if current time is during school hours
-                //if (currentTime >= schoolStart && currentTime < schoolEnd) {
-                    document.body.innerHTML = `
-                        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                                    background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%);
-                                    display: flex; flex-direction: column; justify-content: center; align-items: center;
-                                    font-family: 'Bungee', 'Arial Black', sans-serif; color: #ff0055;">
-                            <h1 style="font-size: 80px; margin-bottom: 30px;">SCHOOL HOURS</h1>
-                            <p style="font-size: 24px; color: #40e0d0;">This game is blocked during school hours.</p>
-                            <p style="font-size: 18px; color: #888; margin-top: 20px;">Available after 3:10 PM on weekdays</p>
-                            <p style="font-size: 16px; color: #666; margin-top: 40px;">Weekdays: 8:20 AM - 3:10 PM</p>
-                            <p style="font-size: 14px; color: #555; margin-top: 10px;">Current time: ${now.toLocaleTimeString()}</p>
-                            <input type="text" id="schoolUnbanInput" placeholder="Unban Code" 
-                                   style="margin-top: 40px; padding: 15px 30px; font-size: 20px; 
-                                          background: rgba(0,0,0,0.7); color: #40e0d0; border: 3px solid #ff0080;
-                                          border-radius: 30px; text-align: center; outline: none;" />
-                            <button onclick="checkSchoolUnban()" 
-                                    style="margin-top: 20px; padding: 15px 40px; font-size: 20px;
-                                           background: linear-gradient(45deg, #ff0080, #ff8c00); color: white;
-                                           border: none; border-radius: 30px; cursor: pointer; font-family: 'Bungee', 'Arial Black', sans-serif;">
-                                SUBMIT
-                            </button>
-                        </div>
-                    `;
-                    
-                    // Add unban check function
-                    window.checkSchoolUnban = function() {
-                        const input = document.getElementById('schoolUnbanInput');
-                        if (input.value === 'UNBANALL') {
-                            location.reload();
-                        } else {
-                            alert('Invalid unban code');
-                        }
-                    };
-                    
-                    throw new Error('School hours - game blocked');
-                }
-            }
-            
+        function checkBan() {
             const banned = localStorage.getItem('snakeGameBanned');
             const banReason = localStorage.getItem('snakeGameBanReason') || 'Invalid admin code attempt';
             
@@ -944,6 +895,34 @@
         let food = [];
         const FOOD_COUNT = 300;
         const PURPLE_FOOD_COUNT = 5;
+        
+        // Hardpoint zone
+        let hardpoint = {
+            x: WORLD_WIDTH / 2,
+            y: WORLD_HEIGHT / 2,
+            radius: 200,
+            nextMoveTime: Date.now() + 30000, // Move every 30 seconds
+            glowPhase: 0
+        };
+        let hardpointScore = { player: 0, ai: 0 };
+        let playerInZone = false;
+        let playerOutsideTimer = 0; // Track how long player has been outside
+        
+        // Battle Royale storm
+        let storm = {
+            x: WORLD_WIDTH / 2,
+            y: WORLD_HEIGHT / 2,
+            currentRadius: WORLD_WIDTH,
+            targetRadius: WORLD_WIDTH * 0.9,
+            shrinkStage: 0,
+            maxStages: 12,
+            pauseUntil: 0,
+            isMoving: false,
+            targetX: WORLD_WIDTH / 2,
+            targetY: WORLD_HEIGHT / 2,
+            damageTimer: 0
+        };
+        const STORM_SHRINK_TIMES = [20000, 20000, 20000, 20000, 15000, 15000, 10000, 10000, 10000, 5000, 5000, 5000]; // Time between shrinks
 
         // Colors
         const SNAKE_COLORS = [
@@ -1242,6 +1221,46 @@
                 // Find nearest food or avoid other snakes
                 let targetFood = null;
                 let minDist = Infinity;
+                
+                // HARDPOINT MODE: Go to the hardpoint zone
+                if (gameMode === 'hardpoint') {
+                    const dx = hardpoint.x - head.x;
+                    const dy = hardpoint.y - head.y;
+                    const distToHardpoint = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // If not in hardpoint, go to it
+                    if (distToHardpoint > hardpoint.radius) {
+                        const targetAngle = Math.atan2(dy, dx);
+                        let angleDiff = targetAngle - this.angle;
+                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                        this.angle += angleDiff * 0.1;
+                        
+                        // Boost towards hardpoint if far away
+                        if (this.boost > 30 && distToHardpoint > 400) {
+                            this.boosting = true;
+                        } else if (this.boost < 20) {
+                            this.boosting = false;
+                        }
+                        
+                        return; // Focus on hardpoint
+                    }
+                    // If in hardpoint, stay near center
+                    else {
+                        const centerDx = hardpoint.x - head.x;
+                        const centerDy = hardpoint.y - head.y;
+                        const centerDist = Math.sqrt(centerDx * centerDx + centerDy * centerDy);
+                        
+                        if (centerDist > 50) {
+                            const targetAngle = Math.atan2(centerDy, centerDx);
+                            let angleDiff = targetAngle - this.angle;
+                            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                            this.angle += angleDiff * 0.05;
+                        }
+                        return;
+                    }
+                }
                 
                 // AGGRESSIVE: Try to block the player if they're nearby
                 if (player && this.length > 15) {
@@ -1559,8 +1578,10 @@
 
         function initSnakes() {
             snakes = [];
-            // Create AI snakes
-            for (let i = 0; i < 14; i++) { // 14 AI snakes instead of 15 (player makes 15 total)
+            // Create AI snakes - 29 in BR mode, 14 in other modes
+            const aiCount = gameMode === 'battleroyale' ? 29 : 14;
+            
+            for (let i = 0; i < aiCount; i++) {
                 const x = Math.random() * WORLD_WIDTH;
                 const y = Math.random() * WORLD_HEIGHT;
                 
@@ -1663,7 +1684,7 @@
             
             // Update controls hint for admin
             if (isAdmin) {
-                document.getElementById('controlsHint').innerHTML = 'Move mouse to control • Click/Space to boost • ESC to pause<br><span style="color: #ff0080;">ADMIN: G=Grow | T=Teleport | K=Kill</span>';
+                document.getElementById('controlsHint').innerHTML = 'Move mouse to control • Click/Space to boost • ESC to pause<br><span style="color: #ff0080;">ADMIN: G=Grow | T=Teleport | K=Kill | I=Immunity</span>';
             }
             
             gameStarted = true;
@@ -1680,6 +1701,20 @@
             
             initFood();
             initSnakes();
+            
+            // Initialize storm for Battle Royale
+            if (gameMode === 'battleroyale') {
+                storm.x = WORLD_WIDTH / 2;
+                storm.y = WORLD_HEIGHT / 2;
+                storm.currentRadius = WORLD_WIDTH * 0.8; // Start at 80%
+                storm.targetRadius = WORLD_WIDTH * 0.72; // Stage 1 target (92% of 80%)
+                storm.shrinkStage = 1; // Start at stage 1
+                storm.pauseUntil = 0; // No pause - shrink immediately
+                storm.isMoving = false;
+                storm.targetX = WORLD_WIDTH / 2;
+                storm.targetY = WORLD_HEIGHT / 2;
+                storm.damageTimer = 0;
+            }
             
             gameLoop();
         }
@@ -1767,6 +1802,12 @@
                         snakes.push(newSnake);
                         console.log('Admin: Killed nearest snake');
                     }
+                }
+                if (e.code === 'KeyI') {
+                    // Toggle immunity
+                    adminImmune = !adminImmune;
+                    console.log('Admin: Immunity ' + (adminImmune ? 'ON' : 'OFF'));
+                    alert('Immunity: ' + (adminImmune ? 'ON' : 'OFF'));
                 }
             }
         });
@@ -1886,6 +1927,246 @@
             document.getElementById('rank').textContent = `#${playerRank}`;
         }
 
+        function drawHardpoint() {
+            if (gameMode !== 'hardpoint') return;
+            
+            // Update glow animation
+            hardpoint.glowPhase += 0.05;
+            
+            // Draw hardpoint zone
+            const screenX = hardpoint.x - camera.x;
+            const screenY = hardpoint.y - camera.y;
+            
+            // Outer glow
+            const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, hardpoint.radius);
+            gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
+            gradient.addColorStop(0.7, 'rgba(255, 215, 0, 0.1)');
+            gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Inner circle with pulsing effect
+            const pulseSize = Math.sin(hardpoint.glowPhase) * 10;
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, hardpoint.radius + pulseSize, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Center indicator
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '30px Bungee, Arial Black, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('HARDPOINT', screenX, screenY - 10);
+            
+            // Score display
+            ctx.font = '20px Righteous, Arial Black, sans-serif';
+            ctx.fillStyle = '#40e0d0';
+            ctx.fillText(`YOU: ${hardpointScore.player}`, screenX, screenY + 20);
+            ctx.fillStyle = '#ff0080';
+            ctx.fillText(`AI: ${hardpointScore.ai}`, screenX, screenY + 45);
+            
+            // Move hardpoint after 30 seconds
+            if (Date.now() > hardpoint.nextMoveTime) {
+                hardpoint.x = Math.random() * (WORLD_WIDTH - 400) + 200;
+                hardpoint.y = Math.random() * (WORLD_HEIGHT - 400) + 200;
+                hardpoint.nextMoveTime = Date.now() + 30000;
+            }
+            
+            // Draw direction pointer if hardpoint is off-screen
+            if (player) {
+                const screenX = hardpoint.x - camera.x;
+                const screenY = hardpoint.y - camera.y;
+                
+                // Check if hardpoint is off-screen
+                if (screenX < 0 || screenX > canvas.width || screenY < 0 || screenY > canvas.height) {
+                    // Calculate angle from screen center to hardpoint
+                    const centerX = canvas.width / 2;
+                    const centerY = canvas.height / 2;
+                    const angle = Math.atan2(screenY - centerY, screenX - centerX);
+                    
+                    // Position pointer on edge of screen
+                    const margin = 50;
+                    let pointerX, pointerY;
+                    
+                    // Calculate intersection with screen edges
+                    const cos = Math.cos(angle);
+                    const sin = Math.sin(angle);
+                    
+                    if (Math.abs(cos) > Math.abs(sin)) {
+                        // Hits left or right edge
+                        if (cos > 0) {
+                            pointerX = canvas.width - margin;
+                            pointerY = centerY + (canvas.width - margin - centerX) * Math.tan(angle);
+                        } else {
+                            pointerX = margin;
+                            pointerY = centerY + (margin - centerX) * Math.tan(angle);
+                        }
+                    } else {
+                        // Hits top or bottom edge
+                        if (sin > 0) {
+                            pointerY = canvas.height - margin;
+                            pointerX = centerX + (canvas.height - margin - centerY) / Math.tan(angle);
+                        } else {
+                            pointerY = margin;
+                            pointerX = centerX + (margin - centerY) / Math.tan(angle);
+                        }
+                    }
+                    
+                    // Draw arrow pointer
+                    ctx.save();
+                    ctx.translate(pointerX, pointerY);
+                    ctx.rotate(angle);
+                    
+                    // Arrow shape
+                    ctx.fillStyle = '#ffd700';
+                    ctx.beginPath();
+                    ctx.moveTo(20, 0);
+                    ctx.lineTo(-10, -15);
+                    ctx.lineTo(-10, 15);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Arrow outline
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Distance text
+                    const dist = Math.sqrt(Math.pow(hardpoint.x - (camera.x + centerX), 2) + Math.pow(hardpoint.y - (camera.y + centerY), 2));
+                    ctx.rotate(-angle);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '14px Bungee, Arial Black, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(Math.floor(dist) + 'm', 0, -25);
+                    
+                    ctx.restore();
+                }
+            }
+        }
+        
+        function updateStorm() {
+            if (gameMode !== 'battleroyale') return;
+            
+            const now = Date.now();
+            
+            // Shrink towards target
+            if (storm.currentRadius > storm.targetRadius + 5) {
+                storm.currentRadius -= 2;
+            } else if (storm.currentRadius > storm.targetRadius) {
+                storm.currentRadius = storm.targetRadius; // Snap to target
+                console.log('Storm reached target radius:', storm.targetRadius);
+            }
+            
+            // Check if we've reached target
+            if (storm.currentRadius === storm.targetRadius && storm.shrinkStage < storm.maxStages) {
+                // If pauseUntil is 0, we just finished shrinking - set pause
+                if (storm.pauseUntil === 0) {
+                    storm.pauseUntil = now + 20000;
+                    console.log('Storm pausing for 20 seconds at stage', storm.shrinkStage);
+                }
+                // If pause time is set and has expired, advance to next stage
+                else if (storm.pauseUntil > 0 && now >= storm.pauseUntil) {
+                    storm.shrinkStage++;
+                    console.log('Storm advancing to stage', storm.shrinkStage);
+                    
+                    // Calculate next target based on CURRENT radius
+                    if (storm.shrinkStage <= 8) {
+                        // Stages 1-8: Shrink by 8% of WORLD_WIDTH each time
+                        storm.targetRadius = WORLD_WIDTH * (1 - (storm.shrinkStage * 0.08));
+                    } else if (storm.shrinkStage < 12) {
+                        // Stages 9-11: Shrink to 70% of current size
+                        storm.targetRadius = storm.currentRadius * 0.7;
+                        // Also move location
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = storm.currentRadius * 0.3;
+                        storm.targetX = storm.x + Math.cos(angle) * distance;
+                        storm.targetY = storm.y + Math.sin(angle) * distance;
+                        storm.isMoving = true;
+                    } else {
+                        // Stage 12: Completely closed
+                        storm.targetRadius = 0;
+                    }
+                    
+                    console.log('New target radius:', storm.targetRadius, 'current:', storm.currentRadius);
+                    
+                    // Clear pause so shrinking can start next frame
+                    storm.pauseUntil = 0;
+                }
+            }
+            
+            // Move storm center (stages 9-12)
+            if (storm.isMoving) {
+                const dx = storm.targetX - storm.x;
+                const dy = storm.targetY - storm.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 5) {
+                    storm.x += (dx / dist) * 3;
+                    storm.y += (dy / dist) * 3;
+                } else {
+                    storm.isMoving = false;
+                }
+            }
+        }
+        
+        function drawStorm() {
+            if (gameMode !== 'battleroyale') return;
+            
+            // Draw safe zone (white circle)
+            const safeX = storm.x - camera.x;
+            const safeY = storm.y - camera.y;
+            
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.arc(safeX, safeY, storm.currentRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw storm (purple fog covering everything outside)
+            ctx.save();
+            ctx.fillStyle = 'rgba(138, 43, 226, 0.4)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Cut out safe zone
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(safeX, safeY, storm.currentRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            // Storm info
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '20px Bungee, Arial Black, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Stage: ${storm.shrinkStage}/${storm.maxStages}`, 20, canvas.height - 60);
+            
+            const timeLeft = Math.max(0, Math.floor((storm.pauseUntil - Date.now()) / 1000));
+            if (timeLeft > 0) {
+                ctx.fillText(`Next: ${timeLeft}s`, 20, canvas.height - 30);
+            } else {
+                ctx.fillText('Shrinking...', 20, canvas.height - 30);
+            }
+        }
+        
+        function checkStormDamage(snake) {
+            if (gameMode !== 'battleroyale') return false;
+            
+            const head = snake.segments[0];
+            const dx = head.x - storm.x;
+            const dy = head.y - storm.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            // Outside safe zone = instant death
+            if (dist > storm.currentRadius) {
+                return true;
+            }
+            
+            return false;
+        }
+
         function drawGrid() {
             ctx.strokeStyle = 'rgba(255, 0, 128, 0.1)';
             ctx.lineWidth = 1;
@@ -1915,8 +2196,36 @@
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+            // Update storm
+            updateStorm();
+            
             // Draw grid
             drawGrid();
+            
+            // Draw storm
+            drawStorm();
+            
+            // Draw hardpoint zone
+            drawHardpoint();
+            
+            // Check if player is in hardpoint (score points with 2x multiplier)
+            if (gameMode === 'hardpoint' && player) {
+                const dx = player.segments[0].x - hardpoint.x;
+                const dy = player.segments[0].y - hardpoint.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < hardpoint.radius) {
+                    // Player is in zone - score 2 points (2x multiplier)
+                    hardpointScore.player += 2;
+                    playerInZone = true;
+                    playerOutsideTimer = 0; // Reset outside timer
+                } else {
+                    // Player is outside zone - no scoring, but keep score
+                    playerInZone = false;
+                    playerOutsideTimer++;
+                    // Score is preserved, just not gaining points
+                }
+            }
             
             // Draw food
             for (let f of food) {
@@ -1947,6 +2256,17 @@
                 const snake = snakes[i];
                 snake.update();
                 checkFoodCollision(snake);
+                
+                // Check if AI is in hardpoint (score points slower - every 4 frames)
+                if (gameMode === 'hardpoint') {
+                    const dx = snake.segments[0].x - hardpoint.x;
+                    const dy = snake.segments[0].y - hardpoint.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < hardpoint.radius) {
+                        // AI scores 0.25 per frame (effectively 1 point every 4 frames)
+                        hardpointScore.ai += 0.25;
+                    }
+                }
                 
                 // Prevent body overlap with other snakes (check every 5th segment for performance)
                 for (let j = 0; j < snakes.length; j++) {
@@ -2000,11 +2320,13 @@
                                 spawnFood(snake.segments[0].x, snake.segments[0].y, snake.length);
                                 snakes.splice(i, 1);
                                 
-                                // Spawn new snake (with team in TDM)
-                                const x = Math.random() * WORLD_WIDTH;
-                                const y = Math.random() * WORLD_HEIGHT;
-                                const newSnake = new Snake(x, y, false, '', gameMode === 'tdm' ? snake.team : null);
-                                snakes.push(newSnake);
+                                // Spawn new snake (with team in TDM) - not in BR
+                                if (gameMode !== 'battleroyale') {
+                                    const x = Math.random() * WORLD_WIDTH;
+                                    const y = Math.random() * WORLD_HEIGHT;
+                                    const newSnake = new Snake(x, y, false, '', gameMode === 'tdm' ? snake.team : null);
+                                    snakes.push(newSnake);
+                                }
                                 snakeDied = true;
                                 break;
                             }
@@ -2024,11 +2346,13 @@
                                 spawnFood(snake.segments[0].x, snake.segments[0].y, snake.length);
                                 snakes.splice(i, 1);
                                 
-                                // Spawn new snake (with team in TDM)
-                                const x = Math.random() * WORLD_WIDTH;
-                                const y = Math.random() * WORLD_HEIGHT;
-                                const newSnake = new Snake(x, y, false, '', gameMode === 'tdm' ? snake.team : null);
-                                snakes.push(newSnake);
+                                // Spawn new snake (with team in TDM) - not in BR
+                                if (gameMode !== 'battleroyale') {
+                                    const x = Math.random() * WORLD_WIDTH;
+                                    const y = Math.random() * WORLD_HEIGHT;
+                                    const newSnake = new Snake(x, y, false, '', gameMode === 'tdm' ? snake.team : null);
+                                    snakes.push(newSnake);
+                                }
                                 snakeDied = true;
                                 break;
                             }
@@ -2043,10 +2367,30 @@
                 
                 snake.draw();
                 
+                // Check storm damage for AI
+                if (checkStormDamage(snake)) {
+                    // AI dies from storm
+                    spawnFood(snake.segments[0].x, snake.segments[0].y, snake.length);
+                    snakes.splice(i, 1);
+                    
+                    // Don't respawn in BR (shouldn't happen anyway since only BR has storm)
+                    // Spawn new snake in other modes
+                    if (gameMode !== 'battleroyale') {
+                        const x = Math.random() * WORLD_WIDTH;
+                        const y = Math.random() * WORLD_HEIGHT;
+                        const newSnake = new Snake(x, y, false, '', gameMode === 'tdm' ? snake.team : null);
+                        snakes.push(newSnake);
+                    }
+                    continue;
+                }
+                
                 // Check if AI snake hit player's head (game mode dependent)
                 if (player && snake.checkCollision(player)) {
-                    if (gameMode === 'ffa') {
-                        // In FFA, AI hitting player = player dies
+                    // Admin immunity prevents AI collision
+                    if (isAdmin && adminImmune) {
+                        // Do nothing - immune!
+                    } else if (gameMode === 'ffa' || gameMode === 'battleroyale') {
+                        // In FFA/BR, AI hitting player = player dies
                         spawnFood(player.segments[0].x, player.segments[0].y, player.length);
                         endGame();
                         return;
@@ -2063,8 +2407,8 @@
                 }
                 
                 // Check if AI snake hit other AI snakes (game mode dependent)
-                if (gameMode === 'ffa' || gameMode === 'suicide') {
-                    // In FFA and SUICIDE, AI snakes kill each other
+                if (gameMode === 'ffa' || gameMode === 'suicide' || gameMode === 'battleroyale') {
+                    // In FFA, SUICIDE, and BR, AI snakes kill each other
                     for (let k = snakes.length - 1; k >= 0; k--) {
                         const otherSnake = snakes[k];
                         if (snake !== otherSnake && snake.checkCollision(otherSnake)) {
@@ -2072,11 +2416,13 @@
                             spawnFood(snake.segments[0].x, snake.segments[0].y, snake.length);
                             snakes.splice(i, 1);
                             
-                            // Spawn new snake
-                            const x = Math.random() * WORLD_WIDTH;
-                            const y = Math.random() * WORLD_HEIGHT;
-                            const newSnake = new Snake(x, y, false);
-                            snakes.push(newSnake);
+                            // Spawn new snake - not in BR
+                            if (gameMode !== 'battleroyale') {
+                                const x = Math.random() * WORLD_WIDTH;
+                                const y = Math.random() * WORLD_HEIGHT;
+                                const newSnake = new Snake(x, y, false);
+                                snakes.push(newSnake);
+                            }
                             break;
                         }
                     }
@@ -2106,11 +2452,29 @@
                 checkFoodCollision(player);
                 player.draw();
                 
+                // Check storm damage
+                if (checkStormDamage(player)) {
+                    // Admin immunity prevents storm death
+                    if (isAdmin && adminImmune) {
+                        // Do nothing - immune!
+                    } else {
+                        // Player dies from storm
+                        spawnFood(player.segments[0].x, player.segments[0].y, player.length);
+                        endGame();
+                        return;
+                    }
+                }
+                
                 // Check if player hit other snakes (game mode dependent)
                 for (let snake of snakes) {
                     if (player.checkCollision(snake)) {
-                        if (gameMode === 'ffa') {
-                            // FFA: player hitting AI = player dies
+                        // Admin immunity prevents collision death
+                        if (isAdmin && adminImmune) {
+                            continue; // Skip damage
+                        }
+                        
+                        if (gameMode === 'ffa' || gameMode === 'battleroyale') {
+                            // FFA/BR: player hitting AI = player dies
                             spawnFood(player.segments[0].x, player.segments[0].y, player.length);
                             endGame();
                             return;
@@ -2139,6 +2503,10 @@
                         const dist = Math.sqrt(dx * dx + dy * dy);
                         
                         if (dist < player.segmentRadius * 2) {
+                            // Admin immunity prevents self-collision death
+                            if (isAdmin && adminImmune) {
+                                continue; // Skip damage
+                            }
                             // Player hit themselves - GAME OVER
                             spawnFood(player.segments[0].x, player.segments[0].y, player.length);
                             endGame();
@@ -2149,6 +2517,11 @@
                 
                 // Update HUD
                 document.getElementById('length').textContent = player.length;
+                
+                // Update hardpoint scores in HUD
+                if (gameMode === 'hardpoint') {
+                    document.getElementById('length').textContent = `YOU: ${hardpointScore.player} | AI: ${hardpointScore.ai}`;
+                }
                 
                 // Update boost bar
                 const boostPercent = (player.boost / player.maxBoost) * 100;
