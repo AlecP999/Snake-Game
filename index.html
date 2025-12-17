@@ -499,7 +499,7 @@
         <div class="stats" id="finalStats"></div>
         <button onclick="location.reload()" style="margin-top: 40px; padding: 20px 60px; font-size: 28px; font-family: 'Bungee', cursive; background: linear-gradient(45deg, #ff0080, #ff8c00); color: white; border: none; border-radius: 50px; cursor: pointer;">PLAY AGAIN</button>
     </div>
-
+    
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -1334,40 +1334,68 @@
                     }
                 }
                 
-                // AGGRESSIVE: Try to block the player if they're nearby
+                // AGGRESSIVE: Try to attack nearby targets (player or other AI)
+                let targetSnake = null;
+                let targetDist = Infinity;
+                
+                // Find closest target
                 if (player && this.length > 15) {
                     const playerHead = player.segments[0];
                     const dx = playerHead.x - head.x;
                     const dy = playerHead.y - head.y;
                     const distToPlayer = Math.sqrt(dx * dx + dy * dy);
                     
-                    // If player is close, try to intercept them
                     if (distToPlayer < 300) {
-                        // Predict where player is going
-                        const playerAngle = player.angle;
-                        const predictDistance = 80;
-                        const predictX = playerHead.x + Math.cos(playerAngle) * predictDistance;
-                        const predictY = playerHead.y + Math.sin(playerAngle) * predictDistance;
-                        
-                        // Try to get in front of them
-                        const interceptDx = predictX - head.x;
-                        const interceptDy = predictY - head.y;
-                        const targetAngle = Math.atan2(interceptDy, interceptDx);
-                        
-                        let angleDiff = targetAngle - this.angle;
-                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                        this.angle += angleDiff * 0.08;
-                        
-                        // Boost when chasing player
-                        if (this.boost > 30 && distToPlayer < 200) {
-                            this.boosting = true;
-                        } else if (this.boost < 20) {
-                            this.boosting = false;
-                        }
-                        
-                        return; // Focus on player, skip food seeking
+                        targetSnake = player;
+                        targetDist = distToPlayer;
                     }
+                }
+                
+                // Also check for nearby AI snakes to attack
+                for (let otherSnake of snakes) {
+                    if (otherSnake === this) continue;
+                    if (otherSnake.length < this.length - 10) continue; // Only attack similar/larger snakes
+                    
+                    const otherHead = otherSnake.segments[0];
+                    const dx = otherHead.x - head.x;
+                    const dy = otherHead.y - head.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // If this AI is closer than current target, attack it instead
+                    if (dist < 250 && dist < targetDist) {
+                        targetSnake = otherSnake;
+                        targetDist = dist;
+                    }
+                }
+                
+                // Attack the target if found
+                if (targetSnake) {
+                    const targetHead = targetSnake.segments[0];
+                    
+                    // Predict where target is going
+                    const targetAngle = targetSnake.angle;
+                    const predictDistance = 80;
+                    const predictX = targetHead.x + Math.cos(targetAngle) * predictDistance;
+                    const predictY = targetHead.y + Math.sin(targetAngle) * predictDistance;
+                    
+                    // Try to intercept them
+                    const interceptDx = predictX - head.x;
+                    const interceptDy = predictY - head.y;
+                    const angleToTarget = Math.atan2(interceptDy, interceptDx);
+                    
+                    let angleDiff = angleToTarget - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    this.angle += angleDiff * 0.08;
+                    
+                    // Boost when chasing
+                    if (this.boost > 30 && targetDist < 200) {
+                        this.boosting = true;
+                    } else if (this.boost < 20) {
+                        this.boosting = false;
+                    }
+                    
+                    return; // Focus on target, skip food seeking
                 }
 
                 for (let f of food) {
@@ -1906,10 +1934,14 @@
                         const nearest = snakes[0];
                         spawnFood(nearest.segments[0].x, nearest.segments[0].y, nearest.length);
                         snakes.splice(0, 1);
-                        const x = Math.random() * WORLD_WIDTH;
-                        const y = Math.random() * WORLD_HEIGHT;
-                        const newSnake = new Snake(x, y, false);
-                        snakes.push(newSnake);
+                        
+                        // Don't respawn in hardpoint/BR
+                        if (gameMode !== 'battleroyale' && gameMode !== 'hardpoint') {
+                            const x = Math.random() * WORLD_WIDTH;
+                            const y = Math.random() * WORLD_HEIGHT;
+                            const newSnake = new Snake(x, y, false);
+                            snakes.push(newSnake);
+                        }
                         console.log('Admin: Killed nearest snake');
                     }
                 }
@@ -2016,8 +2048,47 @@
                 Final Rank: #${playerRank} / ${allSnakes.length}
             `;
             
+            // Remove player and hide UI
+            player = null;
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('boostIndicator').style.display = 'none';
+            document.getElementById('joystick').style.display = 'none';
+            document.getElementById('mobileBoost').style.display = 'none';
+            document.getElementById('mobileVenom').style.display = 'none';
+            
             document.getElementById('gameOver').style.display = 'flex';
         }
+        
+        function victory() {
+            gameOver = true;
+            player = null;
+            
+            // Show victory screen
+            document.body.innerHTML += `
+                <div id="victoryScreen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                    background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #1a0033 100%);
+                    display: flex; flex-direction: column; justify-content: center; align-items: center;
+                    font-family: 'Bungee', 'Arial Black', sans-serif; z-index: 3000;
+                    animation: victoryFade 0.5s;">
+                    <h1 style="font-size: 100px; color: #ffd700; text-shadow: 0 0 50px rgba(255, 215, 0, 0.8); margin-bottom: 20px;">VICTORY!</h1>
+                    <p style="font-size: 36px; color: #40e0d0; margin-bottom: 10px;">YOU ARE THE CHAMPION!</p>
+                    <p style="font-size: 24px; color: #ff0080;">Final Score: ${Math.floor(hardpointScore.player)}</p>
+                    <p style="font-size: 18px; color: #888; margin-top: 20px;">Returning to lobby...</p>
+                </div>
+                <style>
+                    @keyframes victoryFade {
+                        from { opacity: 0; transform: scale(0.8); }
+                        to { opacity: 1; transform: scale(1); }
+                    }
+                </style>
+            `;
+            
+            // Return to lobby after 5 seconds
+            setTimeout(() => {
+                location.reload();
+            }, 5000);
+        }
+        
 
         function updateLeaderboard() {
             const allSnakes = [player, ...snakes].sort((a, b) => b.length - a.length);
@@ -2156,7 +2227,7 @@
         }
         
         function updateStorm() {
-            if (gameMode !== 'battleroyale') return;
+            if (gameMode !== 'battleroyale' && gameMode !== 'hardpoint') return;
             
             const now = Date.now();
             
@@ -2221,7 +2292,7 @@
         }
         
         function drawStorm() {
-            if (gameMode !== 'battleroyale') return;
+            if (gameMode !== 'battleroyale' && gameMode !== 'hardpoint') return;
             
             // Draw safe zone (white circle)
             const safeX = storm.x - camera.x;
@@ -2262,7 +2333,7 @@
         }
         
         function checkStormDamage(snake) {
-            if (gameMode !== 'battleroyale') return false;
+            if (gameMode !== 'battleroyale' && gameMode !== 'hardpoint') return false;
             
             const head = snake.segments[0];
             const dx = head.x - storm.x;
@@ -2390,7 +2461,7 @@
                                 snakes.splice(j, 1);
                                 
                                 // Spawn new snake
-                                if (gameMode !== 'battleroyale') {
+                                if (gameMode !== 'battleroyale' && gameMode !== 'hardpoint') {
                                     const x = Math.random() * WORLD_WIDTH;
                                     const y = Math.random() * WORLD_HEIGHT;
                                     const newSnake = new Snake(x, y, false, '', gameMode === 'tdm' ? snake.team : null);
@@ -2561,7 +2632,7 @@
                                 snakes.splice(i, 1);
                                 
                                 // Spawn new snake (with team in TDM) - not in BR
-                                if (gameMode !== 'battleroyale') {
+                                if (gameMode !== 'battleroyale' && gameMode !== 'hardpoint') {
                                     const x = Math.random() * WORLD_WIDTH;
                                     const y = Math.random() * WORLD_HEIGHT;
                                     const newSnake = new Snake(x, y, false, '', gameMode === 'tdm' ? snake.team : null);
@@ -2587,7 +2658,7 @@
                                 snakes.splice(i, 1);
                                 
                                 // Spawn new snake (with team in TDM) - not in BR
-                                if (gameMode !== 'battleroyale') {
+                                if (gameMode !== 'battleroyale' && gameMode !== 'hardpoint') {
                                     const x = Math.random() * WORLD_WIDTH;
                                     const y = Math.random() * WORLD_HEIGHT;
                                     const newSnake = new Snake(x, y, false, '', gameMode === 'tdm' ? snake.team : null);
@@ -2615,7 +2686,7 @@
                     
                     // Don't respawn in BR (shouldn't happen anyway since only BR has storm)
                     // Spawn new snake in other modes
-                    if (gameMode !== 'battleroyale') {
+                    if (gameMode !== 'battleroyale' && gameMode !== 'hardpoint') {
                         const x = Math.random() * WORLD_WIDTH;
                         const y = Math.random() * WORLD_HEIGHT;
                         const newSnake = new Snake(x, y, false, '', gameMode === 'tdm' ? snake.team : null);
@@ -2678,8 +2749,8 @@
                 }
                 
                 // Check if AI snake hit other AI snakes (game mode dependent)
-                if (gameMode === 'ffa' || gameMode === 'suicide' || gameMode === 'battleroyale') {
-                    // In FFA, SUICIDE, and BR, AI snakes kill each other
+                if (gameMode === 'ffa' || gameMode === 'suicide' || gameMode === 'battleroyale' || gameMode === 'hardpoint') {
+                    // In FFA, SUICIDE, BR, and HARDPOINT, AI snakes kill each other
                     for (let k = snakes.length - 1; k >= 0; k--) {
                         const otherSnake = snakes[k];
                         if (snake !== otherSnake && snake.checkCollision(otherSnake)) {
@@ -2688,7 +2759,7 @@
                             snakes.splice(i, 1);
                             
                             // Spawn new snake - not in BR
-                            if (gameMode !== 'battleroyale') {
+                            if (gameMode !== 'battleroyale' && gameMode !== 'hardpoint') {
                                 const x = Math.random() * WORLD_WIDTH;
                                 const y = Math.random() * WORLD_HEIGHT;
                                 const newSnake = new Snake(x, y, false);
@@ -2802,6 +2873,12 @@
             
             updateCamera();
             updateLeaderboard();
+            
+            // Check for victory in Hardpoint mode (last player standing)
+            if (gameMode === 'hardpoint' && player && snakes.length === 0) {
+                victory();
+                return;
+            }
             
             requestAnimationFrame(gameLoop);
         }
