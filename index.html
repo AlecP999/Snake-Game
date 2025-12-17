@@ -1269,6 +1269,54 @@
                     }
                 }
                 
+                // EVASIVE: Dodge other AI snakes
+                for (let otherSnake of snakes) {
+                    if (otherSnake === this) continue;
+                    
+                    const otherHead = otherSnake.segments[0];
+                    const dx = head.x - otherHead.x;
+                    const dy = head.y - otherHead.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // If another AI is close, dodge away
+                    if (dist < 150) {
+                        const awayAngle = Math.atan2(dy, dx); // Angle away from other snake
+                        let angleDiff = awayAngle - this.angle;
+                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                        
+                        // Turn away from the other snake
+                        const turnStrength = Math.min(0.2, 30 / dist); // Stronger turn when closer
+                        this.angle += angleDiff * turnStrength;
+                        
+                        // Boost to escape if very close
+                        if (dist < 80 && this.boost > 20) {
+                            this.boosting = true;
+                        }
+                    }
+                    
+                    // Also dodge other snake's bodies
+                    for (let i = 5; i < otherSnake.segments.length; i += 5) {
+                        const segment = otherSnake.segments[i];
+                        const segDx = head.x - segment.x;
+                        const segDy = head.y - segment.y;
+                        const segDist = Math.sqrt(segDx * segDx + segDy * segDy);
+                        
+                        if (segDist < 100) {
+                            const awayAngle = Math.atan2(segDy, segDx);
+                            let angleDiff = awayAngle - this.angle;
+                            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                            
+                            this.angle += angleDiff * 0.15;
+                            
+                            if (segDist < 50 && this.boost > 15) {
+                                this.boosting = true;
+                            }
+                        }
+                    }
+                }
+                
                 // Also check if we're close to any part of our body (proximity check)
                 for (let i = 20; i < this.segments.length; i++) {
                     const segment = this.segments[i];
@@ -1678,8 +1726,13 @@
 
         function initSnakes() {
             snakes = [];
-            // Create AI snakes - 29 in BR mode, 14 in other modes
-            const aiCount = gameMode === 'battleroyale' ? 29 : 14;
+            // Create AI snakes - 40 in Hardpoint, 29 in BR, 14 in other modes
+            let aiCount = 14;
+            if (gameMode === 'hardpoint') {
+                aiCount = 40;
+            } else if (gameMode === 'battleroyale') {
+                aiCount = 29;
+            }
             
             for (let i = 0; i < aiCount; i++) {
                 const x = Math.random() * WORLD_WIDTH;
