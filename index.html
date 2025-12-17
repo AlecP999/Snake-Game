@@ -1805,7 +1805,10 @@
         }
 
         function shootVenom() {
-            if (!player || gameOver || isPaused || venomCooldown > 0) return;
+            if (!player || gameOver || isPaused) return;
+            
+            // Admin can rapid fire (no cooldown)
+            if (!isAdmin && venomCooldown > 0) return;
             
             const head = player.segments[0];
             venomShots.push({
@@ -1817,7 +1820,10 @@
                 lifetime: 180 // 3 seconds at 60fps
             });
             
-            venomCooldown = VENOM_COOLDOWN_TIME;
+            // Only set cooldown for non-admins
+            if (!isAdmin) {
+                venomCooldown = VENOM_COOLDOWN_TIME;
+            }
         }
 
         function togglePause() {
@@ -2417,8 +2423,8 @@
                     if (hit) break;
                 }
                 
-                // Check collision with player's own body (SUICIDE mode emergency cut)
-                if (player && gameMode === 'suicide') {
+                // Check collision with player's own body (emergency cut in all modes)
+                if (player) {
                     for (let p = 5; p < player.segments.length; p++) {
                         const segment = player.segments[p];
                         const dx = venom.x - segment.x;
@@ -2738,8 +2744,8 @@
                             continue; // Skip damage
                         }
                         
-                        if (gameMode === 'ffa' || gameMode === 'battleroyale') {
-                            // FFA/BR: player hitting AI = player dies
+                        if (gameMode === 'ffa' || gameMode === 'battleroyale' || gameMode === 'hardpoint') {
+                            // FFA/BR/HARDPOINT: player hitting AI = player dies
                             spawnFood(player.segments[0].x, player.segments[0].y, player.length);
                             endGame();
                             return;
@@ -2803,6 +2809,65 @@
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+        });
+        
+        // Disable right-click context menu
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
+        
+        // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+Shift+C
+        document.addEventListener('keydown', (e) => {
+            // F12
+            if (e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+Shift+I (Inspect)
+            if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+Shift+J (Console)
+            if (e.ctrlKey && e.shiftKey && e.key === 'J') {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+U (View Source)
+            if (e.ctrlKey && e.key === 'u') {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+Shift+C (Inspect Element)
+            if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Ctrl+S (Save Page)
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Disable text selection
+        document.addEventListener('selectstart', (e) => {
+            if (gameStarted) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Disable drag
+        document.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+            return false;
         });
     </script>
 </body>
