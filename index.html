@@ -201,7 +201,8 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
+            z-index: 9999;
+            pointer-events: auto;
         }
 
         .game-over h2 {
@@ -2144,7 +2145,7 @@
                             const btn = document.getElementById('toggleCodeBtn');
                             
                             if (display.textContent === '••••••') {
-                                display.textContent = '${ADMIN_CODE_REVEAL}';
+                                display.textContent = ADMIN_CODE_REVEAL;
                                 btn.textContent = 'HIDE CODE';
                             } else {
                                 display.textContent = '••••••';
@@ -2682,7 +2683,16 @@
             document.getElementById('mobileBoost').style.display = 'none';
             document.getElementById('mobileVenom').style.display = 'none';
             
-            document.getElementById('gameOver').style.display = 'flex';
+            const gameOverScreen = document.getElementById('gameOver');
+            gameOverScreen.style.display = 'flex';
+            gameOverScreen.style.zIndex = '9999';
+            
+            // Prevent any code from hiding the game over screen
+            Object.defineProperty(gameOverScreen.style, 'display', {
+                value: 'flex',
+                writable: false,
+                configurable: false
+            });
         }
         
         function victory() {
