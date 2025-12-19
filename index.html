@@ -1268,6 +1268,10 @@
                 this.team = team; // 'red' or 'blue' or null
                 this.difficulty = 'medium'; // AI difficulty: easy, medium, hard, insane
                 
+                // Spawn protection - 2 seconds of invincibility
+                this.spawnProtection = true;
+                this.spawnProtectionTime = 120; // 2 seconds at 60fps
+                
                 // Team colors for TDM mode
                 if (team === 'red') {
                     this.colors = ['#ff0080', '#ff1493']; // Red/Pink team
@@ -1298,6 +1302,14 @@
             }
 
             update(mouseX, mouseY) {
+                // Countdown spawn protection
+                if (this.spawnProtection && this.spawnProtectionTime > 0) {
+                    this.spawnProtectionTime--;
+                    if (this.spawnProtectionTime <= 0) {
+                        this.spawnProtection = false;
+                    }
+                }
+                
                 // Update angle based on target
                 if (this.isPlayer && gameStarted) {
                     // Use joystick if active, otherwise use mouse
@@ -1927,6 +1939,34 @@
                 ctx.shadowBlur = 4;
                 ctx.fillText(this.name, head.x - camera.x, head.y - camera.y - this.segmentRadius - 15);
                 ctx.shadowBlur = 0;
+                
+                // Draw spawn protection shield
+                if (this.spawnProtection) {
+                    const pulseAlpha = 0.3 + Math.sin(Date.now() / 100) * 0.2;
+                    ctx.beginPath();
+                    ctx.arc(
+                        head.x - camera.x,
+                        head.y - camera.y,
+                        this.segmentRadius * 2,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.strokeStyle = `rgba(0, 255, 255, ${pulseAlpha})`;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    
+                    // Inner shield glow
+                    ctx.beginPath();
+                    ctx.arc(
+                        head.x - camera.x,
+                        head.y - camera.y,
+                        this.segmentRadius * 1.5,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fillStyle = `rgba(0, 255, 255, ${pulseAlpha * 0.2})`;
+                    ctx.fill();
+                }
             }
 
             checkCollision(otherSnake) {
@@ -2165,14 +2205,8 @@
                 }
             }
             
-            // Mark tournament as played for this month (if not admin)
-            if (gameMode === 'tournament' && !isAdmin) {
-                const tournamentData = JSON.parse(localStorage.getItem('tournamentProgress') || '{}');
-                const currentMonth = new Date().getMonth() + '-' + new Date().getFullYear();
-                tournamentData.month = currentMonth;
-                tournamentData.hasPlayed = true;
-                localStorage.setItem('tournamentProgress', JSON.stringify(tournamentData));
-            }
+            // Don't mark as played yet - only mark when eliminated or win finals
+            // Tournament progress is saved when advancing stages
             
             // Moderate the name (skip if admin)
             if (inputName && !isAdmin && !moderateName(inputName)) {
@@ -2640,7 +2674,10 @@
                 } else if (tournamentStage === 'finals' && playerRank === 1) {
                     qualified = true;
                     tournamentData.stage = 'qualifier'; // Reset
-                    tournamentData.month = null;
+                    // Keep the month so hasPlayed persists
+                    const currentMonth = new Date().getMonth() + '-' + new Date().getFullYear();
+                    tournamentData.month = currentMonth;
+                    tournamentData.hasPlayed = true; // Lock tournament for this month
                     message = `
                         <div style="color: #ffd700; font-size: 24px; margin-top: 15px; padding: 20px; background: rgba(255, 215, 0, 0.2); border: 2px solid #ffd700; border-radius: 10px;">
                             🏆 TOURNAMENT CHAMPION! 🏆<br>
@@ -2656,13 +2693,20 @@
                         </div>
                     `;
                 } else {
-                    // Failed to qualify
+                    // Failed to qualify - MARK AS PLAYED FOR THIS MONTH
                     message = '<div style="color: #ff0000; font-size: 18px; margin-top: 15px;">❌ ELIMINATED - Try again next month</div>';
                     tournamentData.stage = 'qualifier';
-                    tournamentData.month = null;
+                    // Keep the month so hasPlayed persists
+                    const currentMonth = new Date().getMonth() + '-' + new Date().getFullYear();
+                    tournamentData.month = currentMonth;
+                    tournamentData.hasPlayed = true; // Lock tournament for this month
                 }
                 
                 if (qualified) {
+                    // Don't mark as played yet - they can continue
+                    localStorage.setItem('tournamentProgress', JSON.stringify(tournamentData));
+                } else {
+                    // Mark as played - they're eliminated
                     localStorage.setItem('tournamentProgress', JSON.stringify(tournamentData));
                 }
                 
@@ -2719,9 +2763,12 @@
                     victoryMessage = 'ADVANCED TO FINALS!';
                     extraInfo = '<p style="font-size: 20px; color: #ffd700; margin-top: 20px;">Get 1ST PLACE for the ADMIN CODE!</p>';
                 } else if (tournamentStage === 'finals') {
-                    // TOURNAMENT WINNER - Show admin code
+                    // TOURNAMENT WINNER - Show admin code and mark as played
                     tournamentData.stage = 'qualifier'; // Reset for next month
-                    tournamentData.month = null;
+                    // Keep the month so hasPlayed persists
+                    const currentMonth = new Date().getMonth() + '-' + new Date().getFullYear();
+                    tournamentData.month = currentMonth;
+                    tournamentData.hasPlayed = true; // Lock tournament for this month
                     victoryMessage = 'TOURNAMENT CHAMPION! 🏆';
                     extraInfo = `
                         <div style="margin-top: 30px; padding: 30px; background: rgba(255, 0, 128, 0.2); border: 3px solid #ff0080; border-radius: 20px;">
@@ -3734,6 +3781,11 @@
                                 break;
                             }
                             
+                            // Spawn protection prevents collision
+                            if (player.spawnProtection) {
+                                break;
+                            }
+                            
                             // Hit first 3 segments (head area) = death
                             if (p < 3) {
                                 if (gameMode === 'ffa' || gameMode === 'battleroyale' || gameMode === 'hardpoint' || gameMode === 'tournament') {
@@ -3834,6 +3886,11 @@
                     if (player.checkCollision(snake)) {
                         // Admin immunity prevents collision death
                         if (isAdmin && adminImmune) {
+                            continue; // Skip damage
+                        }
+                        
+                        // Spawn protection prevents collision death
+                        if (player.spawnProtection) {
                             continue; // Skip damage
                         }
                         
