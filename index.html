@@ -2590,8 +2590,8 @@
 
         function checkFoodCollision(snake) {
             const head = snake.segments[0];
-            const MAGNET_RADIUS = 500; // Attraction range
-            const MAGNET_STRENGTH = 0.4; // Pull strength (faster pull)
+            const MAGNET_RADIUS = 250; // Attraction range (reduced from 500)
+            const MAGNET_STRENGTH = 0.6; // Pull strength (much stronger)
             
             for (let i = food.length - 1; i >= 0; i--) {
                 const f = food[i];
